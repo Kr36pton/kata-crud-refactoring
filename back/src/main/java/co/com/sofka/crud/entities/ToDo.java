@@ -1,8 +1,6 @@
 package co.com.sofka.crud.entities;
-
 import javax.persistence.*;
 import java.io.Serializable;
-
 @Entity
 @Table(name="to_do")
 public class ToDo implements Serializable {
@@ -11,8 +9,6 @@ public class ToDo implements Serializable {
     private Long id;
     private String name;
     private boolean isCompleted;
-    @ManyToOne(fetch = FetchType.LAZY,cascade = CascadeType.ALL)
-    private TaskGroup listGroup;
 
     public ToDo(){}
 
@@ -28,20 +24,11 @@ public class ToDo implements Serializable {
     public void setName(String name) {
         this.name = name;
     }
-
     public boolean getIsCompleted() {
         return isCompleted;
     }
-
     public void setCompleted(boolean isCompleted) {
         this.isCompleted = isCompleted;
     }
 
-    public TaskGroup getListGroup() {
-        return listGroup;
-    }
-
-    public void setListGroup(TaskGroup listGroup) {
-        this.listGroup = listGroup;
-    }
 }
