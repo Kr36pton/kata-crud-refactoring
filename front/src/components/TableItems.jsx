@@ -129,12 +129,27 @@ const TableItems = () => {
                       <tr>
                         <td>{task.id}</td>
                         <td>{task.name}</td>
-                        <td><input type="checkbox" />Completado</td>
+                        <td><input type="checkbox" onChange={()=>
+                          {
+                            const request = {
+                              name: task.name,
+                              id: task.id,
+                              isCompleted: !task.isCompleted
+                            };
+
+                            fetch(HOST_API + "/items/update", {
+                              method: "PUT",
+                              body: JSON.stringify(request),
+                              headers: {
+                                'Content-Type': 'application/json'
+                              }
+                            })
+                          }} defaultChecked={task.isCompleted} />Completado</td>
                         <td><button type="submit" onClick={(event) =>
                           {
                             event.preventDefault();
                             setCurrentList({"nameItemUpdate": task.name, "idItemUpdate": task.id});
-
+                            
                           }}>Editar</button></td>
                         <td><button type="submit" onClick={(event)=>
                           {
