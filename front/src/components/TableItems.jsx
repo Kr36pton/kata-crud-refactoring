@@ -1,12 +1,17 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Store } from "./StoreProvider";
+import { Store } from "./Store";
+import UpdateForm from "./UpdateForm.jsx";
+
 const TableItems = () => {
   const HOST_API = "http://localhost:8080/api/to-do";
-  const { register, errors, handleSubmit, setValue } = useForm();
+
+  const { register, formState: {errors}, handleSubmit } = useForm();
+
   const { dispatch, state: { todo } } = useContext(Store);
-  const [currentList, setCurrentList] =  useState({name: ""});
+  const [currentList, setCurrentList] =  useState({name: "", id: ""});
   const [groups, setGroups] = useState([]);
+
   useEffect(() => {
     fetch(HOST_API + "/groups/list")
       .then(response => response.json())
@@ -14,66 +19,45 @@ const TableItems = () => {
         dispatch({ type: "update-list", groupToDo: groups })
         setGroups(todo.groupToDo);
       });
+
   }, [dispatch]);
-  setValue("nameItemUpdate",currentList.nameItemUpdate);
-  const onDelete = (id) => {
-    fetch(HOST_API + "/" + id + "/todo", {
-      method: "DELETE"
-    }).then((list) => {
-      dispatch({ type: "delete-item", id })
-    })
-  };
-  const onEdit = (todo) => {
-  };
-  const onChange = (event, todo) => {
-    const request = {
-      name: todo.name,
-      id: todo.id,
-      completed: event.target.checked
-    };
-    fetch(HOST_API + "/todo", {
-      method: "PUT",
-      body: JSON.stringify(request),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-      .then(response => response.json())
-      .then((todo) => {
-        dispatch({ type: "update-item", item: todo });
-      });
-  };
+
+
+
   const decorationDone = {
     textDecoration: 'line-through'
   };
+
   const addTaskToGroup = (data) => {
+
     const request = {
       name: data.nameItem,
       completed: false,
       tasks:[]
     };
-    
-    fetch(HOST_API + "/items/save/" + data.groupId, {
-      method: "POST",
-      body: JSON.stringify(request),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-      .then(response => response.json())
-      .then((todo) => {
-        dispatch({ type: "add-item", item: todo, groupId: data.groupId });
-      });
+
+    if (data.groupId !== "Seleccione una categoria")
+    {
+      fetch(HOST_API + "/items/save/" + data.groupId, {
+        method: "POST",
+        body: JSON.stringify(request),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(response => response.json())
+        .then((todo) => {
+          dispatch({ type: "add-item", item: todo, groupId: data.groupId });
+        });
+    }
   }
-  const mark = () => {
-  }
+
   const onUpdate = (data) => 
   {
     const request = {
       name: data.nameItemUpdate,
       id: currentList.idItemUpdate,
     };
-    console.log(request);
     fetch(HOST_API + "/items/update", {
       method: "PUT",
       body: JSON.stringify(request),
@@ -83,37 +67,49 @@ const TableItems = () => {
     }).then(response => response.json())
     .then((data) =>
     {
-      console.log(data);
-        dispatch({type: "edit-item", task: data, groupId: currentList.idItemUpdate});
+        dispatch({type: "edit-item", task: data, groupId: currentList.idGroupUpdate});
+        setCurrentList({...currentList, nameItemUpdate: data.name, idItemUpdate: data.id})
     })
   }
   return <div>
-    <form onSubmit={handleSubmit(addTaskToGroup)}>
-      <input {...register("nameItem")} type="text" placeholder="Nombre del To-Do" />
-      <select {...register("groupId")}>
+
+    <form className="row"  onSubmit={handleSubmit(addTaskToGroup)}>
+      <input className="form-control mt-3 mb-1" {...register("nameItem", {required: true})} 
+      type="text" placeholder="Nombre de la Tarea" />
+
+      <select className="form-select" {...register("groupId")}>
         <option>Seleccione una categoria</option>
         {
           groups.map((group) => {
             return (
-              <option value={group.id}>{group.name}</option>
+              <option key={group.id} value={group.id}>{group.name}</option>
             );
           })
         }
       </select>
-      <button type="submit">Crear tarea</button>
+      <div><b>{errors.nameItem && "Por favor rellene el nombre de la tarea"}</b></div>
+
+      <button className="btn btn-primary border border-dark my-1" type="submit">Nueva tarea</button>
     </form>
-    <form onSubmit={handleSubmit(onUpdate)}>
-        <input type="text" {...register("nameItemUpdate")}/>
-        <button type="submit">Actualizar</button>
-    </form>
+
+    <UpdateForm onUpdate={onUpdate} currentList={currentList}></UpdateForm>
+
     {
       groups.map((group) => {
         return (
-          <div>
-            <h3>{group.name}</h3>
-            <form onChange={handleSubmit(mark)}>
-              <table>
-                <thead>
+          <div key={group.id}>
+            <h3 className="d-inline">{group.name}</h3>
+            <button className="btn btn-danger m-2" onClick={()=>
+              {
+                fetch(HOST_API + "/groups/delete/" + group.id,
+                {
+                    method:"DELETE"
+                });
+                dispatch({type:"delete-group", group: group,groupId: group.id});
+              }}>Eliminar</button>
+            <form>
+              <table className="table table-striped">
+                <thead className="table-dark">
                   <tr>
                     <th>ID</th>
                     <th>Tarea</th>
@@ -126,32 +122,36 @@ const TableItems = () => {
                 {
                   group.tasks!=null?group.tasks.map((task) => {
                     return (
-                      <tr>
+                      <tr key={task.id}>
                         <td>{task.id}</td>
-                        <td>{task.name}</td>
-                        <td><input type="checkbox" onChange={()=>
+                        <td style={task.isCompleted ? decorationDone : {}}>{task.name}</td>
+                        <td><input className="form-check-input mx-2" type="checkbox" onChange={()=>
                           {
                             const request = {
                               name: task.name,
                               id: task.id,
                               isCompleted: !task.isCompleted
                             };
-
                             fetch(HOST_API + "/items/update", {
                               method: "PUT",
                               body: JSON.stringify(request),
                               headers: {
                                 'Content-Type': 'application/json'
                               }
-                            })
-                          }} defaultChecked={task.isCompleted} />Completado</td>
-                        <td><button type="submit" onClick={(event) =>
+                            }).then(response => response.json())
+                            .then((data)=>
+                            {
+                              dispatch({type: "edit-item", task: data, groupId: group.id});
+                            });
+                          }} checked={task.isCompleted} />Completado</td>
+                        <td><button className="btn btn-warning" type="submit" onClick={(event) =>
                           {
                             event.preventDefault();
-                            setCurrentList({"nameItemUpdate": task.name, "idItemUpdate": task.id});
+                            setCurrentList({"nameItemUpdate": task.name, "idItemUpdate": task.id
+                          , "idGroupUpdate": group.id});
                             
                           }}>Editar</button></td>
-                        <td><button type="submit" onClick={(event)=>
+                        <td><button className="btn btn-danger" type="submit" onClick={(event)=>
                           {
                             event.preventDefault();
                             fetch(HOST_API + "/items/delete/" + task.id, {
@@ -160,10 +160,11 @@ const TableItems = () => {
                                 'Content-Type': 'application/json'
                               }
                             })
+                            dispatch({type:'delete-item', task: {id: task.id}});
                           }}>Eliminar</button></td>
                       </tr>
                     );
-                  }): <h3>No tiene actividades en esta seccion</h3>
+                  }): <h3>No tiene tareas en esta seccion</h3>
                 }
                 </tbody>
               </table>
